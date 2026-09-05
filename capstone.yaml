@@ -1,0 +1,7 @@
+run: npm start
+seed: npm run seed
+base_url: http://localhost:3000
+endpoints:
+  meter: POST /generate
+  usage: GET /usage
+  webhook: POST /webhooks/stripe
