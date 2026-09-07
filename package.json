@@ -1,0 +1,37 @@
+{
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "openai": "^7.10.0",
+    "pg": "^8.23.0",
+    "zod": "^4.5.4"
+  },
+  "name": "ai-billing-and-metering-capstone",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+  "start": "tsx src/index.ts",
+  "dev": "tsx watch src/index.ts",
+  "seed": "tsx src/db/seed.ts"
+},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Devcarlj/ai-metering-billing.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Devcarlj/ai-metering-billing/issues"
+  },
+  "homepage": "https://github.com/Devcarlj/ai-metering-billing#readme",
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.4.1",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  }
+}
