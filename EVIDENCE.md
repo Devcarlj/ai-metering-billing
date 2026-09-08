@@ -67,27 +67,101 @@ curl -i -X POST http://localhost:3000/generate \
 
 ---
 
+
+
 ## 3. Stripe Integration & Webhooks
 
 ### Requirement:
-
 > Subscription checkout works end-to-end in Stripe test mode. Webhooks verify signatures, ignore duplicate events, and update tenant plan/status.
 
-### Probe 3: Stripe Checkout Sync Proof
+---
 
-```text
-[PASTE TRANSCRIPT / LOG SHOWING FREE -> PRO PLAN FLIP VIA WEBHOOK]
+### Test Execution: Probe 3 (Stripe Checkout Plan Upgrade Proof)
+
+**Command Executed (Stripe CLI Trigger with Tenant ID Override)**:
+```bash
+stripe trigger checkout.session.completed \
+  --override checkout_session:client_reference_id=11111111-1111-1111-1111-111111111111
+
+```
+
+### Transcript / Output Proof:
+
+<img width="1412" height="117" alt="Screenshot 2026-09-09 011248" src="https://github.com/user-attachments/assets/022bccad-971e-4338-b7a1-afcc012bc843" />
+
+<br>&nbsp;
+**Command Executed (Post-Upgrade Quota Verification)**:
+
+```bash
+curl -i -X POST http://localhost:3000/generate \
+  -H "X-Tenant-ID: 11111111-1111-1111-1111-111111111111" \
+  -H "Idempotency-Key: post-upgrade-key-500k" \
+  -H "Content-Type: application/json" \
+  -d '{"type": "ai_tokens", "input_tokens": 500000}'
 
 ```
 
-### Probe 4: Forged Webhook & Replay Proof
+### Transcript / Output Proof:
 
-```text
-[PASTE TRANSCRIPT SHOWING FORGED SIGNATURE GETS HTTP 400 AND REPLAY IS PROCESSED ONCE]
+<img width="1387" height="378" alt="image" src="https://github.com/user-attachments/assets/bc7915cc-48db-4252-9347-af0cab7ac12c" />
+
+<br>&nbsp;
+**Database Record Verification**:
+
+<img width="1527" height="246" alt="image" src="https://github.com/user-attachments/assets/861a31a3-df34-434d-9965-9f82f31e9080" />
+
+
+
+### Probe 4: Webhook Signature Verification & Replay Protection
+
+#### Part A: Forged Webhook Signature Test
+**Objective**: Prove that webhooks with invalid cryptographic signatures are safely rejected with `HTTP 400 Bad Request` without modifying system or database state.
+
+**Command Executed**:
+```bash
+curl -i -X POST http://localhost:3000/webhooks/stripe \
+  -H "Stripe-Signature: t=123456,v1=invalid_forged_signature_hash" \
+  -H "Content-Type: application/json" \
+  -d '{"id": "evt_forged_999", "type": "checkout.session.completed"}'
 
 ```
+
+### Transcript / Output Proof:
+
+<img width="1417" height="495" alt="Screenshot 2026-09-09 014759" src="https://github.com/user-attachments/assets/03a0f1e2-7711-4f6a-ae00-3cd2696484a0" />
+
 
 ---
+
+#### Part B: Webhook Replay Deduplication Test
+
+**Objective**: Replay an identical valid Stripe webhook event (`evt_...`) using the Stripe CLI to prove the backend executes business logic once and cleanly ignores duplicate replays.
+
+**Commands Executed**:
+
+```bash
+# 1. Trigger Initial Event to obtain a valid Event ID
+stripe trigger checkout.session.completed \
+  --override checkout_session:client_reference_id=11111111-1111-1111-1111-111111111111
+
+# 2. Resend the exact same Event ID to test replay protection
+stripe resend evt_3UDTAX3mOiEZhsjr0H22ll6u
+
+```
+
+### Transcript / Output Proof:
+<img width="1383" height="57" alt="image" src="https://github.com/user-attachments/assets/46af93b9-7d72-4bdc-a846-c083e032932b" />
+<br>&nbsp;
+<img width="1167" height="61" alt="image" src="https://github.com/user-attachments/assets/a3da6f59-f4cc-438c-ae79-a07e7f3db1ac" />
+
+
+**Database Deduplication Record (psql verification)**:
+
+<img width="1535" height="252" alt="image" src="https://github.com/user-attachments/assets/fd0f6795-2fb9-40ad-94f6-b801d52eb052" />
+
+---
+
+
 
 ## 4. Cost Calculation
 
