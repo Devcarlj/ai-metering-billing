@@ -161,55 +161,43 @@ stripe resend evt_3UDTAX3mOiEZhsjr0H22ll6u
 
 ---
 
-
-
-## 4. Cost Calculation
+## 4. Cost Calculation & Final Hardening
 
 ### Requirement:
-
-> Monthly usage rolls up into a cost figure per tenant; AI token pricing handles cached input and reasoning tokens.
-
-### Probe 5: Cost Rollup Proof (`GET /usage`)
-
-```http
-[PASTE TRANSCRIPT OF GET /usage MATCHING PINNED PRICING CONSTANTS]
-
-```
-
-```
+> Monthly usage rolls up into a cost figure per tenant; AI token pricing handles cached input and reasoning tokens according to pinned money rules.
 
 ---
 
-### Terminal Commands to Generate Evidence for Probe 1 (`test-key-101`)
+### Probe 5: Cost Rollup Verification (`GET /usage`)
 
-To populate Section 1 of your `EVIDENCE.md`, run these two terminal commands sequentially against your running Docker containers[cite: 2, 3]:
+**Objective**: Verify that the `/usage` endpoint correctly aggregates API calls and AI tokens across all categories (input, cached input, output, and reasoning) within the active billing period, applying the exact pinned pricing constants to compute individual and total USD costs[cite: 1].
 
-#### Request 1: Initial Call
+**Pricing Constants Used (`src/constants/pricing.ts`)**:
+* **API Calls**: `$0.001` per call[cite: 1]
+* **Fresh Input Tokens**: `$0.00015` per 1k tokens (`$0.15` per 1M)[cite: 1]
+* **Cached Input Tokens**: `$0.0000375` per 1k tokens (`$0.0375` per 1M)[cite: 1]
+* **Output Tokens**: `$0.0006` per 1k tokens (`$0.60` per 1M)[cite: 1]
+* **Reasoning Tokens**: Billed at output rate (`$0.0006` per 1k tokens)[cite: 1]
+
+**Command Executed**:
 ```bash
-curl -i -X POST http://localhost:3000/generate \
-  -H "X-Tenant-ID: 11111111-1111-1111-1111-111111111111" \
-  -H "Idempotency-Key: test-key-101" \
-  -H "Content-Type: application/json" \
-  -d '{"type": "api_call"}'
+curl -i -X GET http://localhost:3000/usage \
+  -H "X-Tenant-ID: 11111111-1111-1111-1111-111111111111"
 
 ```
 
-#### Request 2: Duplicate Retry
+**Transcript Proof**:
+<br>
+<img width="1410" height="360" alt="image" src="https://github.com/user-attachments/assets/d878b280-086a-49e6-839b-5f3fcf7b24c5" />
 
-```bash
-curl -i -X POST http://localhost:3000/generate \
-  -H "X-Tenant-ID: 11111111-1111-1111-1111-111111111111" \
-  -H "Idempotency-Key: test-key-101" \
-  -H "Content-Type: application/json" \
-  -d '{"type": "api_call"}'
 
-```
 
-#### Database Verification Command
+**Math Breakdown & Proof of Verification**:
 
-Inspect your database container to verify that only a single row exists for `test-key-101`:
-
-```bash
-docker exec -it <db_container_name> psql -U postgres -d billing_db -c "SELECT id, tenant_id, event_type, quantity, idempotency_key, created_at FROM usage_events WHERE idempotency_key = 'test-key-101';"
-
-```
+1. **API Calls**: $12 \text{ calls} \times \$0.001 = \$0.012000$
+2. **Fresh Input Tokens**: $(100,000 / 1000) \times \$0.00015 = \$0.015000$
+3. **Cached Input Tokens**: $(200,000 / 1000) \times \$0.0000375 = \$0.007500$
+4. **Output Tokens**: $(100,000 / 1000) \times \$0.0006 = \$0.060000$
+5. **Reasoning Tokens**: $(110,000 / 1000) \times \$0.0006 = \$0.066000$
+6. **Total AI Tokens Cost**: $\$0.015000 + \$0.007500 + \$0.060000 + \$0.066000 = \$0.148500$
+7. **Total Cost USD**: $\$0.012000 + \$0.148500 = \mathbf{\$0.160500}$
